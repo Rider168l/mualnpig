@@ -3,138 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Care & Talk (No-Setup Version)</title>
+    <title>Care & Talk (Fix Create ID)</title>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-        .container { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        h1 { color: #ff6b6b; margin-bottom: 20px; font-size: 24px; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-image: url('1.png'); 
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: cover; 
+            background-attachment: fixed; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+        }
+        .container { 
+            background: rgba(255, 255, 255, 0.92); 
+            backdrop-filter: blur(5px); 
+            padding: 25px; 
+            border-radius: 16px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15); 
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center; 
+            box-sizing: border-box;
+        }
+        h1 { color: #ff6b6b; margin-bottom: 5px; font-size: 26px; }
+        .audio-status { font-size: 14px; color: #d9534f; margin-bottom: 15px; font-weight: bold; background: #f8d7da; padding: 10px; border-radius: 6px; cursor: pointer; display: none; }
         input, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; }
         textarea { height: 80px; resize: none; }
-        button { background-color: #4caf50; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.2s; }
+        input[type=number] { font-size: 26px; text-align: center; font-weight: bold; color: #007bff; letter-spacing: 5px; }
+        button { background-color: #4caf50; color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; transition: 0.2s; }
         button:hover { background-color: #45a049; }
         .btn-connect { background-color: #008cba; }
         .btn-connect:hover { background-color: #007399; }
-        .quick-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .quick-btn { background-color: #3b5998; color: white; padding: 10px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
-        .quick-btn:hover { background-color: #2d4373; }
-        .status { margin-top: 15px; font-size: 14px; color: #666; font-weight: bold; }
-        #latest-msg { font-size: 22px; color: #333; margin-top: 15px; font-weight: bold; background: #ffe3e3; padding: 15px; border-radius: 8px; border: 2px dashed #ff6b6b; display: none; }
-        .id-box { background: #e7f3fe; padding: 10px; border-radius: 8px; font-weight: bold; color: #0c5460; margin-bottom: 15px; font-size: 18px; }
+        .quick-buttons { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 15px; }
+        .quick-btn { background-color: #007bff; color: white; padding: 16px; border: none; border-radius: 12px; font-size: 18px; cursor: pointer; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+        .quick-btn:hover { background-color: #0056b3; }
+        #latest-msg { font-size: 28px; color: #d9534f; margin-top: 20px; font-weight: bold; background: #fdf7f7; padding: 20px; border-radius: 12px; border: 3px solid #d9534f; display: none; animation: bounce 0.5s ease; }
+        .id-box { background: #e7f3fe; padding: 12px; border-radius: 8px; font-weight: bold; color: #004085; margin-bottom: 15px; font-size: 22px; border: 2px solid #b8daff; }
+        @keyframes bounce {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🦷 Care & Talk</h1>
+    <h1>🦷 MULAN Fun Kud</h1>
     
-    <div id="my-id-display" class="id-box">กำลังสร้างรหัสเครื่อง...</div>
+    <!-- ปุ่มเปิดเสียงสำหรับ Mac -->
+    <div class="audio-status" id="audio-state" onclick="unlockMacAudio()">⚠️ คลิกตรงนี้ 1 ครั้งเพื่อเปิดเสียงบน Mac 🔊</div>
 
+    <!-- กล่องโชว์รหัสเครื่องเลข 2 ตัว -->
+    <div id="my-id-display" class="id-box">กำลังสร้างรหัส...</div>
+
+    <!-- ส่วนกรอกรหัสสำหรับแฟน -->
     <div id="connect-section">
-        <input type="text" id="peer-id-input" placeholder="กรอกรหัสจากหน้าจอ Mac">
+        <input type="number" id="peer-id-input" placeholder="กรอกเลข 2 ตัวจากจอ Mac" inputmode="numeric" pattern="[0-9]*" oninput="if(this.value.length > 2) this.value = this.value.slice(0,2);">
         <button class="btn-connect" onclick="connectToMac()">เชื่อมต่อกับ MacBook</button>
     </div>
 
     <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
 
+    <!-- ส่วนส่งข้อความ -->
     <textarea id="message-input" placeholder="พิมพ์ข้อความที่นี่..."></textarea>
-    <button id="send-btn" onclick="sendMessage()" disabled style="background-color: #ccc;">รอการเชื่อมต่อ...</button>
+    <button onclick="sendMessage()">ส่งข้อความด่วน</button>
     
+    <!-- ปุ่มกดด่วน -->
     <div class="quick-buttons">
-        <button class="quick-btn" onclick="sendQuickMessage('ขอน้ำหน่อยครับ')">💧 ขอน้ำ</button>
-        <button class="quick-btn" onclick="sendQuickMessage('ขอยาแก้ปวดหน่อย')">💊 ขอยาแก้ปวด</button>
-        <button class="quick-btn" onclick="sendQuickMessage('เจ็บแผลจังเลย')">😭 เจ็บแผล</button>
-        <button class="quick-btn" onclick="sendQuickMessage('อยากเข้าห้องน้ำ')">🚽 ไปห้องน้ำ</button>
+        <button class="quick-btn" onclick="sendQuickMessage('ขอน้ำเย็นหน่อย')">💧 ขอน้ำเย็นหน่อย</button>
+        <button class="quick-btn" onclick="sendQuickMessage('ขอยาแก้ปวด')">💊 ขอยาแก้ปวด</button>
+        <button class="quick-btn" onclick="sendQuickMessage('เจ็บแผลมากๆ')">😭 เจ็บแผลมากๆ</button>
+        <button class="quick-btn" onclick="sendQuickMessage('ช่วยพยุงไปห้องน้ำหน่อย')">🚽 ไปห้องน้ำหน่อย</button>
     </div>
 
-    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+    <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
 
-    <h3>ข้อความล่าสุด:</h3>
+    <h3>⚠️ ข้อความล่าสุด ⚠️</h3>
     <div id="latest-msg">ยังไม่มีข้อความ</div>
-    <div id="status" class="status">🔴 ยังไม่พร้อมใช้งาน (คลิกที่นี่ 1 ครั้งเพื่อเปิดเสียง)</div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<!-- 💡 เปลี่ยนมาใช้เซิร์ฟเวอร์มหาชนของ cjs ตัวใหม่ล่าสุด เพื่อไม่ให้ระบบค้าง -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
 
 <script>
-    let peer = new Peer();
+    const shortId = Math.floor(10 + Math.random() * 90).toString();
+    
+    // ตั้งค่าเซิร์ฟเวอร์สำรองเผื่อไว้ด้วย ป้องกันอาการค้างรหัสไม่ขึ้น
+    let peer = new Peer("care-talk-2num-" + shortId, {
+        debug: 1
+    });
+    
     let conn = null;
+    let isMacBook = true; 
     let audioUnlocked = false;
 
-    // เมื่อสร้าง ID สำเร็จ (ฝั่ง Mac จะใช้เลขนี้)
     peer.on('open', (id) => {
-        document.getElementById('my-id-display').innerText = "รหัสเครื่องของคุณ: " + id;
+        document.getElementById('my-id-display').innerText = "รหัสเครื่องของคุณ: " + shortId;
     });
 
-    // ฝั่ง Mac: รอรับการเชื่อมต่อจากโทรศัพท์แฟน
+    // ตรวจจับ Error หากเซิร์ฟเวอร์มีปัญหา จะได้รู้สาเหตุ
+    peer.on('error', (err) => {
+        document.getElementById('my-id-display').innerText = "❌ เกิดข้อผิดพลาดระบบ: " + err.type;
+        document.getElementById('my-id-display').style.background = "#f8d7da";
+        document.getElementById('my-id-display').style.color = "#721c24";
+        console.error(err);
+    });
+
+    document.getElementById('peer-id-input').addEventListener('focus', () => {
+        isMacBook = false;
+        document.getElementById('audio-state').style.display = "none"; 
+    });
+
+    setTimeout(() => {
+        if (isMacBook) {
+            document.getElementById('audio-state').style.display = "block";
+        }
+    }, 600);
+
     peer.on('connection', (connection) => {
         conn = connection;
+        isMacBook = true;
         setupChat();
     });
 
-    // ฝั่งแฟน: กดเชื่อมต่อไปยัง Mac
     function connectToMac() {
+        isMacBook = false;
         const targetId = document.getElementById('peer-id-input').value.trim();
         if (targetId) {
-            conn = peer.connect(targetId);
+            conn = peer.connect("care-talk-2num-" + targetId);
             setupChat();
         }
     }
 
-    // เซ็ตอัประบบแชตเมื่อเชื่อมต่อกันติดแล้ว
     function setupChat() {
-        document.getElementById('status').innerText = "🟢 เชื่อมต่อกันสำเร็จแล้ว!";
-        document.getElementById('status').style.color = "#4caf50";
-        document.getElementById('send-btn').disabled = false;
-        document.getElementById('send-btn').style.backgroundColor = "#4caf50";
-        document.getElementById('send-btn').innerText = "ส่งข้อความ & ออกเสียง";
+        document.getElementById('my-id-display').innerText = "🟢 เชื่อมต่อสำเร็จแล้ว!";
+        document.getElementById('my-id-display').style.background = "#d4edda";
+        document.getElementById('my-id-display').style.color = "#155724";
+        document.getElementById('my-id-display').style.borderColor = "#c3e6cb";
         document.getElementById('connect-section').style.display = "none";
 
-        // เวลาได้รับข้อความ (ฝั่ง Mac จะทำงาน)
         conn.on('data', (data) => {
-            showAndSpeak(data);
+            showAndSpeak(data, true); 
         });
     }
 
-    // ฟังก์ชันส่งข้อความ
     function sendMessage() {
         const text = document.getElementById('message-input').value.trim();
-        if (text && conn) {
-            conn.send(text);
-            showAndSpeak(text);
+        if (text) {
+            if (conn) conn.send(text);
+            showAndSpeak(text, false); 
             document.getElementById('message-input').value = '';
         }
     }
 
-    // ฟังก์ชันส่งข้อความด่วน
     function sendQuickMessage(text) {
-        if (conn && !document.getElementById('send-btn').disabled) {
-            conn.send(text);
-            showAndSpeak(text);
-        }
+        if (conn) conn.send(text);
+        showAndSpeak(text, false); 
     }
 
-    // แสดงข้อความบนจอ + สั่งให้ Mac พูด
-    function showAndSpeak(text) {
+    function showAndSpeak(text, shouldSpeak) {
         const msgDiv = document.getElementById('latest-msg');
         msgDiv.innerText = text;
         msgDiv.style.display = 'block';
         
-        if (audioUnlocked) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'th-TH';
-            window.speechSynthesis.speak(utterance);
+        if (shouldSpeak && isMacBook && audioUnlocked) {
+            try {
+                window.speechSynthesis.cancel(); 
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'th-TH'; 
+                utterance.rate = 1.0;
+                
+                utterance.onerror = function(event) {
+                    alert('พบปัญหาเกี่ยวกับเสียงระบบปฏิบัติการ: ' + event.error);
+                };
+
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                alert('เบราว์เซอร์ไม่รองรับระบบเสียง: ' + e.message);
+            }
         }
     }
 
-    // ปลดล็อกเสียงเบราว์เซอร์เมื่อมีการคลิกหน้าจอ
-    document.body.addEventListener('click', () => {
+    function unlockMacAudio() {
         audioUnlocked = true;
-        document.getElementById('status').innerText = "🟢 ระบบเสียงและแชตพร้อมทำงานแล้ว";
-        // ลองสั่งพูดสั้นๆ เพื่อเทสเสียง
+        const statusDiv = document.getElementById('audio-state');
+        statusDiv.innerText = "🔊 ลำโพง MacBook พร้อมเปิดเสียงแล้ว";
+        statusDiv.style.background = "#d4edda";
+        statusDiv.style.color = "#155724";
+        
         const u = new SpeechSynthesisUtterance("");
         window.speechSynthesis.speak(u);
-    }, { once: true });
+    }
 </script>
 
 </body>
