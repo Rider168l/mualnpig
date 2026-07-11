@@ -81,6 +81,7 @@
     const PREFIX = "care-talk-fixed-";
     const app = document.getElementById('app');
     let peer, conn;
+    let connections = []; // multiple MULAN devices can connect to one Rider
     let role = localStorage.getItem('ct_role');   // 'patient' or 'partner'
     let audioUnlocked = false;
 
@@ -159,19 +160,30 @@
         });
 
         peer.on('connection', (connection) => {
-            conn = connection;
-            document.getElementById('conn-status').innerText = "🟢 เชื่อมต่อกับ MULAN แล้ว";
+            connections.push(connection);
+            updateConnStatus();
             document.getElementById('reply-buttons').style.display = 'grid';
             document.getElementById('reply-typebox').style.display = 'block';
-            conn.on('data', (data) => {
+            connection.on('data', (data) => {
                 if (data && data.type === 'quick') showAndSpeak(data.text);
             });
-            conn.on('close', () => {
-                document.getElementById('conn-status').innerText = "🔌 การเชื่อมต่อหลุด กำลังรอเชื่อมต่อใหม่...";
-                document.getElementById('reply-buttons').style.display = 'none';
-                document.getElementById('reply-typebox').style.display = 'none';
+            connection.on('close', () => {
+                connections = connections.filter(c => c !== connection);
+                updateConnStatus();
+                if (connections.length === 0) {
+                    document.getElementById('reply-buttons').style.display = 'none';
+                    document.getElementById('reply-typebox').style.display = 'none';
+                }
             });
         });
+    }
+
+    function updateConnStatus() {
+        const el = document.getElementById('conn-status');
+        if (!el) return;
+        el.innerText = connections.length > 0
+            ? `🟢 เชื่อมต่อกับ MULAN ${connections.length} เครื่อง`
+            : "รอ MULAN เชื่อมต่อ...";
     }
 
     let thaiVoice = null;
@@ -246,14 +258,14 @@
     }
 
     function sendReply(text) {
-        if (conn && conn.open) conn.send({ type: 'reply', text: text });
+        connections.forEach(c => { if (c.open) c.send({ type: 'reply', text: text }); });
     }
 
     function sendCustomReply() {
         const input = document.getElementById('reply-input');
         const text = input.value.trim();
-        if (text && conn && conn.open) {
-            conn.send({ type: 'reply', text: text });
+        if (text) {
+            connections.forEach(c => { if (c.open) c.send({ type: 'reply', text: text }); });
             input.value = '';
         }
     }
