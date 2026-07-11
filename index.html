@@ -89,8 +89,8 @@
         app.innerHTML = `
             <h1>🦷 MULAN Fun Kud</h1>
             <p class="sub">เลือกว่าอุปกรณ์นี้คือใคร (เลือกครั้งเดียว จำไว้ตลอด)</p>
-            <button class="btn-role" onclick="chooseRole('patient')">😷 ฉันคือคนไข้ (ต้องฟังเสียง)</button>
-            <button class="btn-role" style="background:#007bff" onclick="chooseRole('partner')">💌 ฉันคือแฟน (พิมพ์/กดส่งข้อความ)</button>
+            <button class="btn-role" onclick="chooseRole('patient')">😷 Rider (ต้องฟังเสียง)</button>
+            <button class="btn-role" style="background:#007bff" onclick="chooseRole('partner')">💌 MULAN (พิมพ์/กดส่งข้อความ)</button>
         `;
     }
 
@@ -182,18 +182,21 @@
             }
             utterance.rate = 1.0;
             utterance.onend = () => onDone && onDone(true);
-            utterance.onerror = () => onDone && onDone(false);
+            utterance.onerror = (ev) => onDone && onDone(false, ev.error);
             window.speechSynthesis.speak(utterance);
         } catch (e) {
-            onDone && onDone(false);
+            onDone && onDone(false, e.message);
         }
     }
 
     function testVoice() {
         tryUnlockAudio();
         const status = document.getElementById('conn-status');
-        speakText('ทดสอบเสียง คนไข้พร้อมรับข้อความแล้วค่ะ', (ok) => {
-            if (status) status.innerText = ok ? '✅ เสียงทำงานปกติ' : '❌ พูดไม่ได้ (ลองเปิดเสียงในตัวเครื่องหรือรีโหลดหน้า)';
+        const voiceInfo = thaiVoice ? `(voice: ${thaiVoice.name})` : '(ไม่พบ voice ไทย จะใช้ default)';
+        speakText('ทดสอบเสียง คนไข้พร้อมรับข้อความแล้วค่ะ', (ok, err) => {
+            if (status) status.innerText = ok
+                ? '✅ เสียงทำงานปกติ ' + voiceInfo
+                : `❌ พูดไม่ได้ — error: ${err} ${voiceInfo}`;
         });
     }
 
