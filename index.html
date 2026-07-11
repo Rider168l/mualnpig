@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Care & Talk">
-    <link rel="apple-touch-icon" href="1.png">
-    <link rel="icon" href="1.png">
+    <link rel="apple-touch-icon" href="icon-180.png">
+    <link rel="icon" href="icon-512.png">
 
     <style>
         body {
@@ -117,6 +117,7 @@
         app.innerHTML = `
             <h1>🦷 MULAN Fun Kud</h1>
             <div class="audio-box audio-off" id="audio-state">🔴 ยังไม่ได้เปิดเสียง — แตะหน้าจอตรงไหนก็ได้ 1 ครั้ง</div>
+            <button style="background:#ffb700;margin-bottom:15px;" onclick="testVoice()">🔊 ทดสอบเสียง (กดตรงนี้ก่อนใช้จริง)</button>
             <div id="my-id-display" class="id-box">รหัสเครื่องของคุณ: ${code}</div>
             <p class="sub" id="conn-status">รอแฟนเชื่อมต่อ...</p>
             <hr style="margin:20px 0;border:0;border-top:1px solid #eee;">
@@ -128,6 +129,19 @@
         // ปลดล็อกเสียงจากการแตะที่ไหนก็ได้บนหน้าจอ (แก้ปัญหาเสียงไม่ออกบน iPhone)
         document.addEventListener('click', tryUnlockAudio);
         document.addEventListener('touchend', tryUnlockAudio);
+
+        loadThaiVoice();
+
+        // คอยปลุกระบบเสียงทุก 10 วิ กัน iOS หลับ/ปิดเสียงเงียบๆ หลังไม่ได้ใช้งานสักพัก
+        setInterval(() => {
+            if (audioUnlocked && document.visibilityState === 'visible') {
+                try {
+                    const u = new SpeechSynthesisUtterance(' ');
+                    u.volume = 0.01;
+                    window.speechSynthesis.speak(u);
+                } catch (e) {}
+            }
+        }, 10000);
 
         peer = new Peer(PREFIX + code, { debug: 1 });
 
@@ -145,17 +159,55 @@
         });
     }
 
+    let thaiVoice = null;
+
+    function loadThaiVoice() {
+        function pick() {
+            const voices = window.speechSynthesis.getVoices();
+            thaiVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('th')) || null;
+        }
+        pick();
+        window.speechSynthesis.onvoiceschanged = pick;
+    }
+
+    function speakText(text, onDone) {
+        try {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            if (thaiVoice) {
+                utterance.voice = thaiVoice;
+                utterance.lang = thaiVoice.lang;
+            } else {
+                utterance.lang = 'th-TH';
+            }
+            utterance.rate = 1.0;
+            utterance.onend = () => onDone && onDone(true);
+            utterance.onerror = () => onDone && onDone(false);
+            window.speechSynthesis.speak(utterance);
+        } catch (e) {
+            onDone && onDone(false);
+        }
+    }
+
+    function testVoice() {
+        tryUnlockAudio();
+        const status = document.getElementById('conn-status');
+        speakText('ทดสอบเสียง คนไข้พร้อมรับข้อความแล้วค่ะ', (ok) => {
+            if (status) status.innerText = ok ? '✅ เสียงทำงานปกติ' : '❌ พูดไม่ได้ (ลองเปิดเสียงในตัวเครื่องหรือรีโหลดหน้า)';
+        });
+    }
+
     function tryUnlockAudio() {
         if (audioUnlocked) return;
         audioUnlocked = true;
         try {
             window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance('');
+            const u = new SpeechSynthesisUtterance(' ');
             window.speechSynthesis.speak(u);
         } catch (e) {}
         const el = document.getElementById('audio-state');
         if (el) {
-            el.innerText = "🟢 เปิดเสียงเรียบร้อยแล้ว";
+            el.innerText = "🟢 เปิดเสียงเรียบร้อยแล้ว (ลองกด \"ทดสอบเสียง\" ด้านล่างด้วย)";
             el.classList.remove('audio-off');
             el.classList.add('audio-on');
         }
@@ -168,13 +220,10 @@
         msgDiv.style.display = 'block';
 
         if (audioUnlocked) {
-            try {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'th-TH';
-                utterance.rate = 1.0;
-                window.speechSynthesis.speak(utterance);
-            } catch (e) {}
+            speakText(text, (ok) => {
+                const status = document.getElementById('conn-status');
+                if (status && !ok) status.innerText = '❌ พูดไม่ได้ตอนนี้ ลองกด "ทดสอบเสียง" อีกครั้ง';
+            });
         }
     }
 
