@@ -119,6 +119,17 @@
             <h1>🦷 MULAN Fun Kud</h1>
             <div class="audio-box audio-off" id="audio-state">🔴 ยังไม่ได้เปิดเสียง — แตะหน้าจอตรงไหนก็ได้ 1 ครั้ง</div>
             <button style="background:#ffb700;margin-bottom:15px;" onclick="testVoice()">🔊 ทดสอบเสียง (กดตรงนี้ก่อนใช้จริง)</button>
+
+            <div style="text-align:left;background:#f8f9fa;padding:14px;border-radius:10px;margin-bottom:15px;">
+                <label style="font-size:13px;color:#555;font-weight:bold;">🗣️ เลือกเสียง</label>
+                <select id="voice-select" style="width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;margin:6px 0 12px;font-size:14px;" onchange="onVoiceChange()"></select>
+
+                <label style="font-size:13px;color:#555;font-weight:bold;">ความเร็ว: <span id="rate-val">1.0</span>x</label>
+                <input type="range" id="rate-range" min="0.5" max="2" step="0.1" value="1" style="width:100%;margin:4px 0 12px;" oninput="onRateChange(this.value)">
+
+                <label style="font-size:13px;color:#555;font-weight:bold;">โทนเสียง: <span id="pitch-val">1.0</span></label>
+                <input type="range" id="pitch-range" min="0" max="2" step="0.1" value="1" style="width:100%;margin:4px 0;" oninput="onPitchChange(this.value)">
+            </div>
             <div id="my-id-display" class="id-box">รหัสเครื่องของคุณ: ${code}</div>
             <p class="sub" id="conn-status">รอ MULAN เชื่อมต่อ...</p>
             <hr style="margin:20px 0;border:0;border-top:1px solid #eee;">
@@ -202,14 +213,57 @@
     }
 
     let thaiVoice = null;
+    let allVoices = [];
+    let speechRate = parseFloat(localStorage.getItem('ct_rate')) || 1.0;
+    let speechPitch = parseFloat(localStorage.getItem('ct_pitch')) || 1.0;
+    let savedVoiceURI = localStorage.getItem('ct_voice_uri') || null;
 
     function loadThaiVoice() {
         function pick() {
-            const voices = window.speechSynthesis.getVoices();
-            thaiVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('th')) || null;
+            allVoices = window.speechSynthesis.getVoices();
+            // เอาเสียงไทยก่อน ถ้าไม่มีก็โชว์ทุกเสียงให้เลือกเอง
+            let list = allVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith('th'));
+            if (list.length === 0) list = allVoices;
+
+            const select = document.getElementById('voice-select');
+            if (select && list.length > 0) {
+                select.innerHTML = list.map(v =>
+                    `<option value="${v.voiceURI}">${v.name} (${v.lang})</option>`
+                ).join('');
+
+                let chosen = list.find(v => v.voiceURI === savedVoiceURI) || list[0];
+                select.value = chosen.voiceURI;
+                thaiVoice = chosen;
+            }
+
+            const rateRange = document.getElementById('rate-range');
+            const pitchRange = document.getElementById('pitch-range');
+            if (rateRange) { rateRange.value = speechRate; document.getElementById('rate-val').innerText = speechRate.toFixed(1); }
+            if (pitchRange) { pitchRange.value = speechPitch; document.getElementById('pitch-val').innerText = speechPitch.toFixed(1); }
         }
         pick();
         window.speechSynthesis.onvoiceschanged = pick;
+    }
+
+    function onVoiceChange() {
+        const select = document.getElementById('voice-select');
+        const chosen = allVoices.find(v => v.voiceURI === select.value);
+        if (chosen) {
+            thaiVoice = chosen;
+            localStorage.setItem('ct_voice_uri', chosen.voiceURI);
+        }
+    }
+
+    function onRateChange(val) {
+        speechRate = parseFloat(val);
+        document.getElementById('rate-val').innerText = speechRate.toFixed(1);
+        localStorage.setItem('ct_rate', speechRate);
+    }
+
+    function onPitchChange(val) {
+        speechPitch = parseFloat(val);
+        document.getElementById('pitch-val').innerText = speechPitch.toFixed(1);
+        localStorage.setItem('ct_pitch', speechPitch);
     }
 
     function speakText(text, onDone) {
@@ -222,7 +276,8 @@
             } else {
                 utterance.lang = 'th-TH';
             }
-            utterance.rate = 1.0;
+            utterance.rate = speechRate;
+            utterance.pitch = speechPitch;
             utterance.onend = () => onDone && onDone(true);
             utterance.onerror = (ev) => onDone && onDone(false, ev.error);
             window.speechSynthesis.speak(utterance);
