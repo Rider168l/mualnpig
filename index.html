@@ -128,6 +128,10 @@
                 <button class="quick-btn" style="background:#28a745;" onclick="sendReply('รอแป๊บนึงนะ')">⏳ รอแป๊บนึงนะ</button>
                 <button class="quick-btn" style="background:#28a745;" onclick="sendReply('โอเค เข้าใจแล้ว 👍')">👍 โอเค เข้าใจแล้ว</button>
             </div>
+            <div id="reply-typebox" style="display:none;margin-top:12px;">
+                <textarea id="reply-input" placeholder="หรือพิมพ์ตอบเอง..."></textarea>
+                <button style="background:#28a745;" onclick="sendCustomReply()">ส่งคำตอบ</button>
+            </div>
             <button class="btn-reset" onclick="resetAll()">🔄 รีเซ็ตอุปกรณ์นี้ (เปลี่ยน role/รหัส)</button>
         `;
 
@@ -158,12 +162,14 @@
             conn = connection;
             document.getElementById('conn-status').innerText = "🟢 เชื่อมต่อกับ MULAN แล้ว";
             document.getElementById('reply-buttons').style.display = 'grid';
+            document.getElementById('reply-typebox').style.display = 'block';
             conn.on('data', (data) => {
                 if (data && data.type === 'quick') showAndSpeak(data.text);
             });
             conn.on('close', () => {
                 document.getElementById('conn-status').innerText = "🔌 การเชื่อมต่อหลุด กำลังรอเชื่อมต่อใหม่...";
                 document.getElementById('reply-buttons').style.display = 'none';
+                document.getElementById('reply-typebox').style.display = 'none';
             });
         });
     }
@@ -241,6 +247,15 @@
 
     function sendReply(text) {
         if (conn && conn.open) conn.send({ type: 'reply', text: text });
+    }
+
+    function sendCustomReply() {
+        const input = document.getElementById('reply-input');
+        const text = input.value.trim();
+        if (text && conn && conn.open) {
+            conn.send({ type: 'reply', text: text });
+            input.value = '';
+        }
     }
 
     // ---------- ฝั่งแฟน (ต่อไปหา id คงที่ของคนไข้) ----------
