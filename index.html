@@ -77,6 +77,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
     const PREFIX = "care-talk-fixed-";
     const app = document.getElementById('app');
@@ -84,6 +85,12 @@
     let connections = []; // multiple MULAN devices can connect to one Rider
     let role = localStorage.getItem('ct_role');   // 'patient' or 'partner'
     let audioUnlocked = false;
+
+    // ---------- ตรวจจับลิงก์ YouTube แล้วดึง video ID ----------
+    function extractYouTubeId(text) {
+        const match = text.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        return match ? match[1] : null;
+    }
 
     // ---------- หน้าจอเลือก role ครั้งแรก ----------
     function renderRoleSelect() {
@@ -135,6 +142,16 @@
             <hr style="margin:20px 0;border:0;border-top:1px solid #eee;">
             <h3>⚠️ ข้อความล่าสุด ⚠️</h3>
             <div id="latest-msg">ยังไม่มีข้อความ</div>
+            <div id="yt-status" style="display:none;background:#fff3cd;color:#856404;border:2px solid #ffeeba;padding:14px;border-radius:10px;margin-top:12px;font-weight:bold;">
+                🎵 กำลังเล่นเพลงจาก YouTube...
+                <div id="yt-player" style="width:1px;height:1px;overflow:hidden;position:absolute;"></div>
+                <button id="yt-play-btn" style="display:none;margin-top:10px;background:#ffb700;" onclick="manualPlayYouTube()">▶️ กดเพื่อเล่นเสียง</button>
+            </div>
+            <audio id="local-audio" src="67.mp3" preload="auto"></audio>
+            <div id="mp3-status" style="display:none;background:#e2e3ff;color:#3730a3;border:2px solid #c7d2fe;padding:14px;border-radius:10px;margin-top:12px;font-weight:bold;">
+                🎶 กำลังเล่นเพลง 67.mp3...
+                <button id="mp3-play-btn" style="display:none;margin-top:10px;background:#ffb700;" onclick="manualPlayMp3()">▶️ กดเพื่อเล่นเสียง</button>
+            </div>
             <div class="quick-buttons" id="reply-buttons" style="display:none;">
                 <button class="quick-btn" style="background:#28a745;" onclick="sendReply('กำลังไปแล้ว 🏃')">🏃 กำลังไปแล้ว</button>
                 <button class="quick-btn" style="background:#28a745;" onclick="sendReply('รอแป๊บนึงนะ')">⏳ รอแป๊บนึงนะ</button>
@@ -192,6 +209,8 @@
             document.getElementById('reply-typebox').style.display = 'block';
             connection.on('data', (data) => {
                 if (data && data.type === 'quick') showAndSpeak(data.text);
+                if (data && data.type === 'youtube') playYouTubeAudio(data.videoId);
+                if (data && data.type === 'playmp3') playLocalMp3();
             });
             connection.on('close', () => {
                 connections = connections.filter(c => c !== connection);
@@ -210,6 +229,103 @@
         el.innerText = connections.length > 0
             ? `🟢 เชื่อมต่อกับ MULAN ${connections.length} เครื่อง`
             : "รอ MULAN เชื่อมต่อ...";
+    }
+
+    // ---------- เล่นเสียงจากลิงก์ YouTube (ฝั่งคนไข้) ----------
+    let ytPlayer = null;
+    let ytApiReady = false;
+    let pendingYtVideoId = null;
+
+    window.onYouTubeIframeAPIReady = function () {
+        ytApiReady = true;
+        if (pendingYtVideoId) {
+            const id = pendingYtVideoId;
+            pendingYtVideoId = null;
+            playYouTubeAudio(id);
+        }
+    };
+
+    function playYouTubeAudio(videoId) {
+        const statusBox = document.getElementById('yt-status');
+        const playBtn = document.getElementById('yt-play-btn');
+        if (statusBox) statusBox.style.display = 'block';
+
+        if (!ytApiReady || !document.getElementById('yt-player')) {
+            pendingYtVideoId = videoId;
+            return;
+        }
+
+        if (!ytPlayer) {
+            ytPlayer = new YT.Player('yt-player', {
+                height: '1',
+                width: '1',
+                videoId: videoId,
+                playerVars: { autoplay: 1, playsinline: 1 },
+                events: {
+                    onReady: (e) => {
+                        e.target.playVideo();
+                        if (playBtn) playBtn.style.display = 'none';
+                    },
+                    onError: () => {
+                        if (statusBox) statusBox.innerText = '❌ เล่นเพลงนี้ไม่ได้ (วิดีโออาจถูกจำกัดการฝัง)';
+                    }
+                }
+            });
+        } else {
+            ytPlayer.loadVideoById(videoId);
+            if (playBtn) playBtn.style.display = 'none';
+        }
+
+        if (navigator.vibrate) navigator.vibrate(200);
+
+        // เผื่อ autoplay ถูกบล็อก โชว์ปุ่มกดเล่นเองหลังจากรอสักครู่
+        setTimeout(() => {
+            try {
+                if (ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() !== 1) {
+                    if (playBtn) playBtn.style.display = 'block';
+                }
+            } catch (e) {}
+        }, 1500);
+    }
+
+    function manualPlayYouTube() {
+        if (!ytPlayer) return;
+        try {
+            ytPlayer.playVideo();
+            const playBtn = document.getElementById('yt-play-btn');
+            if (playBtn) playBtn.style.display = 'none';
+        } catch (e) {}
+    }
+
+    // ---------- เล่นไฟล์ 67.mp3 ในเครื่อง (ฝั่งคนไข้) ----------
+    function playLocalMp3() {
+        const audioEl = document.getElementById('local-audio');
+        const statusBox = document.getElementById('mp3-status');
+        const playBtn = document.getElementById('mp3-play-btn');
+        if (!audioEl) return;
+
+        if (statusBox) statusBox.style.display = 'block';
+        if (navigator.vibrate) navigator.vibrate(200);
+
+        try {
+            audioEl.currentTime = 0;
+        } catch (e) {}
+
+        const playPromise = audioEl.play();
+        if (playPromise && playPromise.catch) {
+            playPromise
+                .then(() => { if (playBtn) playBtn.style.display = 'none'; })
+                .catch(() => { if (playBtn) playBtn.style.display = 'block'; });
+        }
+    }
+
+    function manualPlayMp3() {
+        const audioEl = document.getElementById('local-audio');
+        if (!audioEl) return;
+        audioEl.play().then(() => {
+            const playBtn = document.getElementById('mp3-play-btn');
+            if (playBtn) playBtn.style.display = 'none';
+        }).catch(() => {});
     }
 
     let thaiVoice = null;
@@ -354,13 +470,14 @@
             </div>
             <p class="sub" id="conn-status" style="margin-top:15px;"></p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-            <textarea id="message-input" placeholder="พิมพ์ข้อความที่นี่..."></textarea>
+            <textarea id="message-input" placeholder="พิมพ์ข้อความ หรือวางลิงก์ YouTube เพื่อเปิดเพลงให้ฟัง..."></textarea>
             <button onclick="sendMessage()">ส่งข้อความด่วน</button>
             <div class="quick-buttons">
                 <button class="quick-btn" onclick="sendQuickMessage('ใช่จ้า')">ใช่จ้าาาา</button>
                 <button class="quick-btn" onclick="sendQuickMessage('ไม่ใช่จ้า')">ไม่ใช่จ้า</button>
                 <button class="quick-btn" onclick="sendQuickMessage('มานอนด้วยกัน')">😭 มานอนด้วยกัน</button>
                 <button class="quick-btn" onclick="sendQuickMessage('อยากกินข้าวแล้ว')">🍚 อยากกินข้าวแล้ว</button>
+                <button class="quick-btn" style="background:#6f42c1;" onclick="sendPlayMp3()">🎶 เล่นเพลง 67.mp3</button>
             </div>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             <h3>📩 คำตอบจาก Rider</h3>
@@ -418,14 +535,29 @@
 
     function sendMessage() {
         const text = document.getElementById('message-input').value.trim();
-        if (text && conn && conn.open) {
+        if (!text || !conn || !conn.open) return;
+
+        const videoId = extractYouTubeId(text);
+        if (videoId) {
+            conn.send({ type: 'youtube', videoId: videoId });
+            const status = document.getElementById('conn-status');
+            if (status) status.innerText = '🎵 ส่งเพลงแล้ว';
+        } else {
             conn.send({ type: 'quick', text: text });
-            document.getElementById('message-input').value = '';
         }
+        document.getElementById('message-input').value = '';
     }
 
     function sendQuickMessage(text) {
         if (conn && conn.open) conn.send({ type: 'quick', text: text });
+    }
+
+    function sendPlayMp3() {
+        if (conn && conn.open) {
+            conn.send({ type: 'playmp3' });
+            const status = document.getElementById('conn-status');
+            if (status) status.innerText = '🎶 ส่งคำสั่งเล่นเพลงแล้ว';
+        }
     }
 
     function resetAll() {
