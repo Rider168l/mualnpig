@@ -119,10 +119,15 @@
             <div class="audio-box audio-off" id="audio-state">🔴 ยังไม่ได้เปิดเสียง — แตะหน้าจอตรงไหนก็ได้ 1 ครั้ง</div>
             <button style="background:#ffb700;margin-bottom:15px;" onclick="testVoice()">🔊 ทดสอบเสียง (กดตรงนี้ก่อนใช้จริง)</button>
             <div id="my-id-display" class="id-box">รหัสเครื่องของคุณ: ${code}</div>
-            <p class="sub" id="conn-status">รอแฟนเชื่อมต่อ...</p>
+            <p class="sub" id="conn-status">รอ MULAN เชื่อมต่อ...</p>
             <hr style="margin:20px 0;border:0;border-top:1px solid #eee;">
             <h3>⚠️ ข้อความล่าสุด ⚠️</h3>
             <div id="latest-msg">ยังไม่มีข้อความ</div>
+            <div class="quick-buttons" id="reply-buttons" style="display:none;">
+                <button class="quick-btn" style="background:#28a745;" onclick="sendReply('กำลังไปแล้ว 🏃')">🏃 กำลังไปแล้ว</button>
+                <button class="quick-btn" style="background:#28a745;" onclick="sendReply('รอแป๊บนึงนะ')">⏳ รอแป๊บนึงนะ</button>
+                <button class="quick-btn" style="background:#28a745;" onclick="sendReply('โอเค เข้าใจแล้ว 👍')">👍 โอเค เข้าใจแล้ว</button>
+            </div>
             <button class="btn-reset" onclick="resetAll()">🔄 รีเซ็ตอุปกรณ์นี้ (เปลี่ยน role/รหัส)</button>
         `;
 
@@ -151,10 +156,14 @@
 
         peer.on('connection', (connection) => {
             conn = connection;
-            document.getElementById('conn-status').innerText = "🟢 เชื่อมต่อกับแฟนแล้ว";
-            conn.on('data', (data) => showAndSpeak(data));
+            document.getElementById('conn-status').innerText = "🟢 เชื่อมต่อกับ MULAN แล้ว";
+            document.getElementById('reply-buttons').style.display = 'grid';
+            conn.on('data', (data) => {
+                if (data && data.type === 'quick') showAndSpeak(data.text);
+            });
             conn.on('close', () => {
                 document.getElementById('conn-status').innerText = "🔌 การเชื่อมต่อหลุด กำลังรอเชื่อมต่อใหม่...";
+                document.getElementById('reply-buttons').style.display = 'none';
             });
         });
     }
@@ -230,6 +239,10 @@
         }
     }
 
+    function sendReply(text) {
+        if (conn && conn.open) conn.send({ type: 'reply', text: text });
+    }
+
     // ---------- ฝั่งแฟน (ต่อไปหา id คงที่ของคนไข้) ----------
     function startPartner() {
         const savedTarget = localStorage.getItem('ct_target_code');
@@ -252,6 +265,9 @@
                 <button class="quick-btn" onclick="sendQuickMessage('เจ็บแผลมากๆ')">😭 เจ็บแผลมากๆ</button>
                 <button class="quick-btn" onclick="sendQuickMessage('ช่วยพยุงไปห้องน้ำหน่อย')">🚽 ไปห้องน้ำหน่อย</button>
             </div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <h3>📩 คำตอบจาก Rider</h3>
+            <div id="latest-reply" style="font-size:18px;color:#28a745;font-weight:bold;background:#f0fdf4;padding:14px;border-radius:10px;border:2px solid #c3e6cb;display:none;">ยังไม่มีคำตอบ</div>
             <button class="btn-reset" onclick="resetAll()">🔄 รีเซ็ตอุปกรณ์นี้ (เปลี่ยน role/รหัส)</button>
         `;
 
@@ -275,6 +291,16 @@
             document.getElementById('conn-status').innerText = "🟢 เชื่อมต่อสำเร็จแล้ว";
             document.getElementById('connect-section').style.display = 'none';
         });
+        conn.on('data', (data) => {
+            if (data && data.type === 'reply') {
+                const box = document.getElementById('latest-reply');
+                if (box) {
+                    box.innerText = data.text;
+                    box.style.display = 'block';
+                    if (navigator.vibrate) navigator.vibrate(200);
+                }
+            }
+        });
         conn.on('error', () => {
             document.getElementById('conn-status').innerText = "❌ เชื่อมต่อไม่สำเร็จ ลองใหม่อีกครั้ง";
         });
@@ -287,13 +313,13 @@
     function sendMessage() {
         const text = document.getElementById('message-input').value.trim();
         if (text && conn && conn.open) {
-            conn.send(text);
+            conn.send({ type: 'quick', text: text });
             document.getElementById('message-input').value = '';
         }
     }
 
     function sendQuickMessage(text) {
-        if (conn && conn.open) conn.send(text);
+        if (conn && conn.open) conn.send({ type: 'quick', text: text });
     }
 
     function resetAll() {
