@@ -159,6 +159,21 @@
             document.getElementById('conn-status').innerText = "❌ ปัญหาระบบ: " + err.type + " (ลองปิดเปิดแอพใหม่)";
         });
 
+        // peer หลุดจาก signaling server (เช่น เครื่องหลับ/สลับแท็บนาน) -> ต่อกลับเองอัตโนมัติ
+        peer.on('disconnected', () => {
+            document.getElementById('conn-status').innerText = "🟡 หลุดจากเซิร์ฟเวอร์ กำลังต่อกลับ...";
+            setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 1000);
+        });
+
+        // เวลาสลับกลับมาที่แท็บนี้ ให้เช็คแล้วต่อกลับทันทีถ้าหลุดอยู่
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && peer && peer.disconnected && !peer.destroyed) {
+                peer.reconnect();
+            }
+        });
+
+        requestWakeLock();
+
         peer.on('connection', (connection) => {
             connections.push(connection);
             updateConnStatus();
@@ -305,6 +320,15 @@
         peer.on('error', (err) => {
             document.getElementById('conn-status').innerText = "❌ ปัญหาระบบ: " + err.type;
         });
+        peer.on('disconnected', () => {
+            document.getElementById('conn-status').innerText = "🟡 หลุดจากเซิร์ฟเวอร์ กำลังต่อกลับ...";
+            setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 1000);
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && peer && peer.disconnected && !peer.destroyed) {
+                peer.reconnect();
+            }
+        });
     }
 
     function connectToPatient() {
@@ -355,6 +379,23 @@
             localStorage.removeItem('ct_patient_code');
             localStorage.removeItem('ct_target_code');
             location.reload();
+        }
+    }
+
+    // กันจอดับระหว่างเปิดแอพอยู่ (ช่วยไม่ให้ browser ถูกพักการทำงานตอนจอดับ)
+    let wakeLock = null;
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+                document.addEventListener('visibilitychange', async () => {
+                    if (wakeLock !== null && document.visibilityState === 'visible') {
+                        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+                    }
+                });
+            }
+        } catch (e) {
+            console.log('Wake lock ไม่รองรับหรือถูกปฏิเสธ:', e);
         }
     }
 
