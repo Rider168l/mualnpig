@@ -67,6 +67,38 @@
             70% { transform: scale(0.9); }
             100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes screenShake67 {
+            0%   { transform: translate(0, 0) rotate(0deg); }
+            10%  { transform: translate(-10px, -6px) rotate(-2deg); }
+            20%  { transform: translate(10px, 6px) rotate(2deg); }
+            30%  { transform: translate(-10px, 6px) rotate(-2deg); }
+            40%  { transform: translate(10px, -6px) rotate(2deg); }
+            50%  { transform: translate(-8px, 4px) rotate(-1.5deg); }
+            60%  { transform: translate(8px, -4px) rotate(1.5deg); }
+            70%  { transform: translate(-6px, 3px) rotate(-1deg); }
+            80%  { transform: translate(6px, -3px) rotate(1deg); }
+            90%  { transform: translate(-3px, 2px) rotate(-0.5deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        body.shake-67 {
+            animation: screenShake67 0.6s ease-in-out;
+        }
+        #gif67-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        #gif67-overlay img {
+            max-width: 85%;
+            max-height: 85%;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -74,6 +106,10 @@
 <div class="container" id="app">
     <h1>🦷 MULAN Fun Kud</h1>
     <p class="sub">กำลังโหลด...</p>
+</div>
+
+<div id="gif67-overlay">
+    <img src="67.gif" alt="67">
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
@@ -116,6 +152,23 @@
 
     // ---------- ฝั่งคนไข้ (host, id คงที่) ----------
     function startPatient() {
+        // หน้าจอ "แตะเพื่อเริ่ม" เต็มจอ — ต้องแตะครั้งเดียวตอนเปิดแอป
+        // (ข้อจำกัดของเบราว์เซอร์ ต้องมี user gesture จริงก่อนถึงจะอนุญาตให้เล่นเสียง/วิดีโอเองได้)
+        // หลังจากแตะครั้งนี้ครั้งเดียว ข้อความ/เพลง/YouTube ที่ส่งมาทีหลังจะเล่นอัตโนมัติทันที ไม่ต้องกดอะไรอีก
+        app.innerHTML = `
+            <h1>🦷 MULAN Fun Kud</h1>
+            <p class="sub">แตะปุ่มด้านล่าง 1 ครั้งตอนเปิดแอป เพื่อเปิดใช้งานเสียงทั้งหมด<br>(ทำครั้งเดียว หลังจากนี้ข้อความ/เพลงจะเล่นเองอัตโนมัติ)</p>
+            <button class="btn-role" style="background:#28a745;font-size:22px;padding:28px;" onclick="beginPatientSession()">👆 แตะที่นี่เพื่อเริ่มใช้งาน</button>
+        `;
+    }
+
+    function beginPatientSession() {
+        renderPatientMain();
+        tryUnlockAudio();
+        primeYouTubePlayerContainer();
+    }
+
+    function renderPatientMain() {
         let code = localStorage.getItem('ct_patient_code');
         if (!code) {
             code = Math.floor(10 + Math.random() * 90).toString();
@@ -124,8 +177,9 @@
 
         app.innerHTML = `
             <h1>🦷 MULAN Fun Kud</h1>
-            <div class="audio-box audio-off" id="audio-state">🔴 ยังไม่ได้เปิดเสียง — แตะหน้าจอตรงไหนก็ได้ 1 ครั้ง</div>
-            <button style="background:#ffb700;margin-bottom:15px;" onclick="testVoice()">🔊 ทดสอบเสียง (กดตรงนี้ก่อนใช้จริง)</button>
+            <div class="audio-box audio-on" id="audio-state">🟢 เปิดเสียงเรียบร้อยแล้ว — ข้อความ/เพลงจะเล่นเองอัตโนมัติ</div>
+            <button style="background:#ffb700;margin-bottom:15px;" onclick="testVoice()">🔊 ทดสอบเสียง</button>
+            <button style="background:#6f42c1;margin-bottom:15px;" onclick="testMp3()">🎶 ทดสอบเล่นเพลง 67.mp3</button>
 
             <div style="text-align:left;background:#f8f9fa;padding:14px;border-radius:10px;margin-bottom:15px;">
                 <label style="font-size:13px;color:#555;font-weight:bold;">🗣️ เลือกเสียง</label>
@@ -164,11 +218,12 @@
             <button class="btn-reset" onclick="resetAll()">🔄 รีเซ็ตอุปกรณ์นี้ (เปลี่ยน role/รหัส)</button>
         `;
 
-        // ปลดล็อกเสียงจากการแตะที่ไหนก็ได้บนหน้าจอ (แก้ปัญหาเสียงไม่ออกบน iPhone)
+        // เผื่อผู้ใช้แตะที่อื่นในหน้าอีก ก็ยังปลดล็อกซ้ำได้ (ไม่มีผลเสีย)
         document.addEventListener('click', tryUnlockAudio);
         document.addEventListener('touchend', tryUnlockAudio);
 
         loadThaiVoice();
+        primeYouTubePlayerContainer();
 
         // คอยปลุกระบบเสียงทุก 10 วิ กัน iOS หลับ/ปิดเสียงเงียบๆ หลังไม่ได้ใช้งานสักพัก
         setInterval(() => {
@@ -242,8 +297,35 @@
             const id = pendingYtVideoId;
             pendingYtVideoId = null;
             playYouTubeAudio(id);
+        } else if (document.getElementById('yt-player') && !ytPlayer) {
+            primeYouTubePlayerContainer();
         }
     };
+
+    // อุ่นเครื่องเล่น YouTube ทันทีหลังผู้ใช้แตะหน้าจอครั้งแรก (เล่นแบบปิดเสียงแล้วหยุด)
+    // เพื่อให้เพลงจริงที่ส่งมาทีหลังเล่นเสียงอัตโนมัติได้โดยไม่ต้องกดปุ่มเพิ่ม
+    function primeYouTubePlayerContainer() {
+        if (!ytApiReady || !document.getElementById('yt-player') || ytPlayer) return;
+        try {
+            ytPlayer = new YT.Player('yt-player', {
+                height: '1',
+                width: '1',
+                videoId: 'M7lc1UVf-VE',
+                playerVars: { autoplay: 1, mute: 1, playsinline: 1 },
+                events: {
+                    onReady: (e) => {
+                        try {
+                            e.target.mute();
+                            e.target.playVideo();
+                            setTimeout(() => {
+                                try { e.target.pauseVideo(); e.target.unMute(); } catch (err) {}
+                            }, 800);
+                        } catch (err) {}
+                    }
+                }
+            });
+        } catch (e) {}
+    }
 
     function playYouTubeAudio(videoId) {
         const statusBox = document.getElementById('yt-status');
@@ -326,6 +408,23 @@
             const playBtn = document.getElementById('mp3-play-btn');
             if (playBtn) playBtn.style.display = 'none';
         }).catch(() => {});
+    }
+
+    function testMp3() {
+        tryUnlockAudio();
+        const audioEl = document.getElementById('local-audio');
+        const status = document.getElementById('conn-status');
+        if (!audioEl) {
+            if (status) status.innerText = '❌ ไม่พบ audio element';
+            return;
+        }
+        audioEl.muted = false;
+        try { audioEl.currentTime = 0; } catch (e) {}
+        audioEl.play().then(() => {
+            if (status) status.innerText = '✅ เล่นไฟล์ 67.mp3 ได้ปกติ';
+        }).catch((err) => {
+            if (status) status.innerText = '❌ เล่นไฟล์ไม่ได้: ' + err.message + ' (เช็คว่ามีไฟล์ 67.mp3 อยู่โฟลเดอร์เดียวกับ index.html จริงไหม)';
+        });
     }
 
     let thaiVoice = null;
@@ -421,6 +520,29 @@
             const u = new SpeechSynthesisUtterance(' ');
             window.speechSynthesis.speak(u);
         } catch (e) {}
+
+        // ปลดล็อก <audio> element ของไฟล์ mp3 ด้วย (คนละระบบกับ speechSynthesis)
+        // ต้องเล่น+หยุดจากการแตะโดยตรงครั้งนี้ ไม่งั้นพอสั่งเล่นทีหลังจากข้อความที่รับมา
+        // (ไม่ใช่ user gesture) เบราว์เซอร์ (โดยเฉพาะ iOS Safari) จะบล็อกเสียงเงียบๆ
+        try {
+            const audioEl = document.getElementById('local-audio');
+            if (audioEl) {
+                audioEl.muted = true;
+                const p = audioEl.play();
+                if (p && p.then) {
+                    p.then(() => {
+                        audioEl.pause();
+                        audioEl.currentTime = 0;
+                        audioEl.muted = false;
+                    }).catch(() => { audioEl.muted = false; });
+                } else {
+                    audioEl.pause();
+                    audioEl.currentTime = 0;
+                    audioEl.muted = false;
+                }
+            }
+        } catch (e) {}
+
         const el = document.getElementById('audio-state');
         if (el) {
             el.innerText = "🟢 เปิดเสียงเรียบร้อยแล้ว (ลองกด \"ทดสอบเสียง\" ด้านล่างด้วย)";
@@ -470,14 +592,14 @@
             </div>
             <p class="sub" id="conn-status" style="margin-top:15px;"></p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-            <textarea id="message-input" placeholder="พิมพ์ข้อความสำหรับคนฟันคุด.."></textarea>
+            <textarea id="message-input" placeholder="พิมพ์ข้อความ หรือวางลิงก์ YouTube เพื่อเปิดเพลงให้ฟัง..."></textarea>
             <button onclick="sendMessage()">ส่งข้อความด่วน</button>
             <div class="quick-buttons">
                 <button class="quick-btn" onclick="sendQuickMessage('ใช่จ้า')">ใช่จ้าาาา</button>
                 <button class="quick-btn" onclick="sendQuickMessage('ไม่ใช่จ้า')">ไม่ใช่จ้า</button>
                 <button class="quick-btn" onclick="sendQuickMessage('มานอนด้วยกัน')">😭 มานอนด้วยกัน</button>
                 <button class="quick-btn" onclick="sendQuickMessage('อยากกินข้าวแล้ว')">🍚 อยากกินข้าวแล้ว</button>
-                <button class="quick-btn" style="background:#6f42c1;" onclick="sendPlayMp3()">67</button>
+                <button class="quick-btn" style="background:#6f42c1;" onclick="sendPlayMp3()">🎶 เล่นเพลง 67.mp3</button>
             </div>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             <h3>📩 คำตอบจาก Rider</h3>
@@ -553,11 +675,29 @@
     }
 
     function sendPlayMp3() {
+        show67Effect();
         if (conn && conn.open) {
             conn.send({ type: 'playmp3' });
             const status = document.getElementById('conn-status');
             if (status) status.innerText = '🎶 ส่งคำสั่งเล่นเพลงแล้ว';
         }
+    }
+
+    // ---------- เอฟเฟกต์ 67: gif เด้งกลางจอ + จอเขย่า (ฝั่งคนกดปุ่ม/MULAN เท่านั้น) ----------
+    function show67Effect() {
+        document.body.classList.remove('shake-67');
+        // force reflow เพื่อให้เล่น animation ซ้ำได้ทุกครั้งที่กด
+        void document.body.offsetWidth;
+        document.body.classList.add('shake-67');
+        setTimeout(() => document.body.classList.remove('shake-67'), 650);
+
+        const overlay = document.getElementById('gif67-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            setTimeout(() => { overlay.style.display = 'none'; }, 2500);
+        }
+
+        if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 150]);
     }
 
     function resetAll() {
